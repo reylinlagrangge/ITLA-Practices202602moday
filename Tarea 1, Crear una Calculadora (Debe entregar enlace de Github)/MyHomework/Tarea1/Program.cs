@@ -1,3 +1,12 @@
-﻿Console.WriteLine("Hello, World!");
+﻿try
+{
 
-Console.ReadKey();
+    Console.ReadKey();
+
+}
+
+catch (Exception)
+{
+    Console.WriteLine("An error occurred ");
+
+}
