@@ -1,4 +1,4 @@
-﻿namespace Homework4_four_.entities
+﻿namespace Homework4_four_.data.entities
 {
     public class Laboratory
     {

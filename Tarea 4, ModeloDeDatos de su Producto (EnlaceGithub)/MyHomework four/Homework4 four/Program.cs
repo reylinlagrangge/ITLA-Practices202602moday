@@ -1,4 +1,8 @@
-﻿try
+﻿using Homework4_four_.data;
+using Homework4_four_.data.entities;
+using Microsoft.EntityFrameworkCore;
+
+try
 {
     Pharmacy pharmacy = new Pharmacy();
     bool running = true;
@@ -49,54 +53,31 @@
 
     Console.ReadKey();
 }
-catch (Exception)
+catch (Exception ex)
 {
     Console.WriteLine("An error occurred ");
-}
-
-class Laboratory
-{
-    public int Id { get; set; }
-    public string Name { get; set; }
-}
-
-class Medication
-{
-    public int Id { get; set; }
-    public string Name { get; set; }
-    public Laboratory Laboratory { get; set; }
-    public double Price { get; set; }
-}
-
-class Batch
-{
-    public int Id { get; set; }
-    public Medication Medication { get; set; }
-    public int Quantity { get; set; }
-    public DateTime ExpirationDate { get; set; }
+    Console.WriteLine(ex.Message);
+    Console.WriteLine(ex.InnerException?.Message);
 }
 
 class Pharmacy
 {
-    private List<Laboratory> laboratories = new List<Laboratory>();
-    private List<Medication> medications = new List<Medication>();
-    private List<Batch> batches = new List<Batch>();
-    private int nextLaboratoryId = 1;
-    private int nextMedicationId = 1;
-    private int nextBatchId = 1;
+    private Datacontext context = new Datacontext();
 
     public void AddLaboratory()
     {
         Console.Write("Enter laboratory name: ");
         string name = Console.ReadLine();
-        Laboratory laboratory = new Laboratory { Id = nextLaboratoryId, Name = name };
-        laboratories.Add(laboratory);
-        nextLaboratoryId++;
+        Console.Write("Enter country: ");
+        string country = Console.ReadLine();
+
+        context.Laboratories.Add(new Laboratory { Name = name, Country = country });
+        context.SaveChanges();
     }
 
     public void AddMedication()
     {
-        if (laboratories.Count == 0)
+        if (!context.Laboratories.Any())
         {
             Console.WriteLine("No laboratories available");
             return;
@@ -105,7 +86,7 @@ class Pharmacy
         ViewLaboratories();
         Console.Write("Enter laboratory id: ");
         int laboratoryId = Convert.ToInt32(Console.ReadLine());
-        Laboratory laboratory = laboratories.Find(l => l.Id == laboratoryId);
+        Laboratory laboratory = context.Laboratories.Find(laboratoryId);
 
         if (laboratory == null)
         {
@@ -116,16 +97,15 @@ class Pharmacy
         Console.Write("Enter medication name: ");
         string name = Console.ReadLine();
         Console.Write("Enter price: ");
-        double price = Convert.ToDouble(Console.ReadLine());
+        decimal price = Convert.ToDecimal(Console.ReadLine());
 
-        Medication medication = new Medication { Id = nextMedicationId, Name = name, Laboratory = laboratory, Price = price };
-        medications.Add(medication);
-        nextMedicationId++;
+        context.Medications.Add(new Medication { Name = name, Price = price, LaboratoryId = laboratoryId });
+        context.SaveChanges();
     }
 
     public void AddBatch()
     {
-        if (medications.Count == 0)
+        if (!context.Medications.Any())
         {
             Console.WriteLine("No medications available");
             return;
@@ -134,7 +114,7 @@ class Pharmacy
         ViewMedications();
         Console.Write("Enter medication id: ");
         int medicationId = Convert.ToInt32(Console.ReadLine());
-        Medication medication = medications.Find(m => m.Id == medicationId);
+        Medication medication = context.Medications.Find(medicationId);
 
         if (medication == null)
         {
@@ -147,18 +127,17 @@ class Pharmacy
         Console.Write("Enter expiration date (yyyy-MM-dd): ");
         DateTime expirationDate = Convert.ToDateTime(Console.ReadLine());
 
-        Batch batch = new Batch { Id = nextBatchId, Medication = medication, Quantity = quantity, ExpirationDate = expirationDate };
-        batches.Add(batch);
-        nextBatchId++;
+        context.Batches.Add(new Batch { MedicationId = medicationId, Quantity = quantity, ExpirationDate = expirationDate });
+        context.SaveChanges();
     }
 
     public void ViewLaboratories()
     {
-        Console.WriteLine("Id   Name");
+        Console.WriteLine("Id   Name   Country");
         Console.WriteLine("-----------------------------");
-        foreach (var laboratory in laboratories)
+        foreach (var laboratory in context.Laboratories)
         {
-            Console.WriteLine($"{laboratory.Id}    {laboratory.Name}");
+            Console.WriteLine($"{laboratory.Id}    {laboratory.Name}    {laboratory.Country}");
         }
     }
 
@@ -166,7 +145,7 @@ class Pharmacy
     {
         Console.WriteLine("Id   Name   Laboratory   Price");
         Console.WriteLine("-----------------------------------------");
-        foreach (var medication in medications)
+        foreach (var medication in context.Medications.Include(m => m.Laboratory))
         {
             Console.WriteLine($"{medication.Id}    {medication.Name}    {medication.Laboratory.Name}    {medication.Price}");
         }
@@ -176,7 +155,7 @@ class Pharmacy
     {
         Console.WriteLine("Id   Medication   Quantity   Expiration");
         Console.WriteLine("-----------------------------------------");
-        foreach (var batch in batches)
+        foreach (var batch in context.Batches.Include(b => b.Medication))
         {
             Console.WriteLine($"{batch.Id}    {batch.Medication.Name}    {batch.Quantity}    {batch.ExpirationDate.ToShortDateString()}");
         }
@@ -184,7 +163,7 @@ class Pharmacy
 
     public void UpdateStock()
     {
-        if (batches.Count == 0)
+        if (!context.Batches.Any())
         {
             Console.WriteLine("No batches available");
             return;
@@ -193,7 +172,7 @@ class Pharmacy
         ViewBatches();
         Console.Write("Enter batch id: ");
         int batchId = Convert.ToInt32(Console.ReadLine());
-        Batch batch = batches.Find(b => b.Id == batchId);
+        Batch batch = context.Batches.Find(batchId);
 
         if (batch == null)
         {
@@ -202,19 +181,16 @@ class Pharmacy
         }
 
         Console.Write("Enter new quantity: ");
-        int quantity = Convert.ToInt32(Console.ReadLine());
-        batch.Quantity = quantity;
+        batch.Quantity = Convert.ToInt32(Console.ReadLine());
+        context.SaveChanges();
     }
 
     public void CheckExpired()
     {
         Console.WriteLine("Expired batches:");
-        foreach (var batch in batches)
+        foreach (var batch in context.Batches.Include(b => b.Medication).Where(b => b.ExpirationDate < DateTime.Now))
         {
-            if (batch.ExpirationDate < DateTime.Now)
-            {
-                Console.WriteLine($"{batch.Id}    {batch.Medication.Name}    {batch.ExpirationDate.ToShortDateString()}");
-            }
+            Console.WriteLine($"{batch.Id}    {batch.Medication.Name}    {batch.ExpirationDate.ToShortDateString()}");
         }
     }
 }
