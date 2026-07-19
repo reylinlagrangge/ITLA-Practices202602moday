@@ -53,13 +53,10 @@ try
 
     Console.ReadKey();
 }
-catch (Exception ex)
+catch (Exception)
 {
     Console.WriteLine("An error occurred ");
-    Console.WriteLine(ex.Message);
-    Console.WriteLine(ex.InnerException?.Message);
 }
-
 class Pharmacy
 {
     private Datacontext context = new Datacontext();
